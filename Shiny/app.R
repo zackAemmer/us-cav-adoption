@@ -6,17 +6,14 @@ library(geojsonio)
 library(stringr)
 library(htmltools)
 library(parallel)
+library(rsconnect)
 
-setwd("C:/users/zae5o/desktop/stl/toyota av/shiny")
-
-#block_msa = block_msa[block_msa$`CBSA Code`!=46300,]
-#test_geo = readRDS("geo.rds")
-#test_utils = readRDS("utilities.rds")
+#setwd("C:/users/zae5o/desktop/stl/toyota av/shiny")
 
 source("runUtilityModel.R")
 
 matched = readRDS("matched_den.rds")
-matched = matched[1:30000,]
+#matched = matched[1:30000,]
 
 pumas = geojson_read("puma_shapes.geojson", what = "sp")
 states = geojson_read("state_shapes.geojson", what = "sp")
@@ -86,6 +83,7 @@ ui = fluidPage(
       numericInput("service_price_prs", "Pooled Service Price ($/mile)", value = 0.87),
       numericInput("cost_gallon", "Gas Price ($/gallon)", value = 2.79),
       numericInput("mpg", "Fuel Efficiency (mpg)", value = 25),
+      actionButton("save_results", "Save Results"),
       actionButton("update_button", "Run Model")
     ),
     mainPanel(
@@ -99,6 +97,14 @@ ui = fluidPage(
 )
 
 server = function(input, output) {
+  
+  #This object saves the individuals' utilities and information to a csv file when save results is pressed
+  observeEvent(input$save_results, {
+    cat("Saving results...\n")
+    write.csv(matched_reactive(), "utils.csv", row.names = FALSE)
+    cat("Results saved\n")
+  })
+  
   #This object updates only when the Run Model button is pressed. Its output is a dataframe with the model results
   matched_reactive = eventReactive(input$update_button, {
     cat("Calculating Utilities...\n")
@@ -133,12 +139,12 @@ server = function(input, output) {
     utilities$Pservice = 0
     utilities$accessibility = log(rowSums(exp(utilities[,40:46])))
     cat("Finished Mode Choice Probabilities\n")
-    saveRDS(utilities, "utilities.rds")
     return(utilities)
   }, ignoreNULL = TRUE)
   
   #This object updates automatically whenever a new aggregation level/view is selected, or when the utility object is updated
   aggregated_reactive = reactive({
+    cat("Aggregating to selected level...\n")
     #Prevent this object from updating when the tool is first started
     if (input$update_button == 0) {
       return()
@@ -210,7 +216,6 @@ server = function(input, output) {
       geo$report = geo$accessibility
     }
     cat("Finished Aggregation\n")
-    saveRDS(geo, "geo.rds")
     return(geo)
   })
   
@@ -218,16 +223,17 @@ server = function(input, output) {
     if (input$update_button == 0) {
       return()
     }
+    cat("Generating Map...\n")
     if (input$report_metric == 1) {
-      label_report = sprintf("%g%% Market share %s", round(aggregated_reactive()$report*100, 1),aggregated_reactive()$NAME)
+      label_report = sprintf("%g%% Market share: %s", round(aggregated_reactive()$report*100, 1),aggregated_reactive()$NAME)
       groupname = "Market share"
       legendformat = labelFormat(suffix = "%", transform = function(x) 100 * x)
     } else if (input$report_metric == 2) {
-      label_report = sprintf("%g Trip density %s ", round(aggregated_reactive()$report, 1),aggregated_reactive()$NAME)
+      label_report = sprintf("%g trips/sqmi: %s", round(aggregated_reactive()$report, 1),aggregated_reactive()$NAME)
       groupname = "Trip density"
       legendformat = labelFormat()
     } else if (input$report_metric == 3) {
-      label_report = sprintf("%g Accessibility %s", round(aggregated_reactive()$report, 1),aggregated_reactive()$NAME)
+      label_report = sprintf("%g Logsum Accessibility: %s", round(aggregated_reactive()$report, 1),aggregated_reactive()$NAME)
       groupname = "Accessibility"
       legendformat = labelFormat()
     } else {
