@@ -5,8 +5,6 @@ library(mapproj)
 library(geojsonio)
 library(stringr)
 library(htmltools)
-library(parallel)
-library(rsconnect)
 
 #setwd("C:/users/zae5o/desktop/stl/toyota av/shiny")
 
@@ -74,7 +72,6 @@ ui = fluidPage(
   titlePanel("Potential US Market for New Mobility Service"),
   sidebarLayout(
     sidebarPanel(
-      #
       numericInput("service_wait_time", "Service Waiting Time (mins)", value = 5),
       numericInput("transit_wait_time", "Transit Waiting Time (mins)", value = 5),
       numericInput("service_price_srs_base", "Solo Service Base Price ($)", value = 5.50),
@@ -88,15 +85,21 @@ ui = fluidPage(
     ),
     mainPanel(
       leafletOutput("mymap"),
-      radioButtons("aggregate_level", "Aggregation Level", choices = list("State" = 1,"PUMA" = 2), selected = 1),
-      radioButtons("report_metric", "Report Metric", choices = list("Market share" = 1, "Trip density" = 2, "Accessibility" = 3), selected = 1),
-      selectInput("fips", "State for PUMA Evaluation", choices = fips_codes, selected = "01"),
-      checkboxGroupInput("service_types", "Service Types", choices = list("Solo" = 1,"Pooled" = 2,"Solo+Transit" = 3), selected = c(1,2,3))
+      column(6,
+        selectInput("fips", "State for PUMA Evaluation", choices = fips_codes, selected = "01"),
+        radioButtons("aggregate_level", "Aggregation Level", choices = list("State" = 1,"PUMA" = 2), selected = 2)
+      ),
+      column(6,
+        checkboxGroupInput("service_types", "Service Types", choices = list("Solo" = 1,"Pooled" = 2,"Solo+Transit" = 3), selected = c(1,2,3))
+      ),
+      column(6,
+        radioButtons("report_metric", "Report Metric", choices = list("Market share" = 1, "Trip density" = 2, "Accessibility" = 3), selected = 1)
+      )
     )
   )
 )
 
-server = function(input, output) {
+server = function(input, output, session) {
   
   #This object saves the individuals' utilities and information to a csv file when save results is pressed
   observeEvent(input$save_results, {
@@ -105,22 +108,31 @@ server = function(input, output) {
     cat("Results saved\n")
   })
   
+  #If state is selected, disable the accessibility/density options (currently no population data)
+  observeEvent(input$aggregate_level, {
+    if (input$aggregate_level == 1) {
+      updateRadioButtons(session, "report_metric", choices = list("Market share" = 1), selected = 1)
+    } else {
+      updateRadioButtons(session, "report_metric", choices = list("Market share" = 1, "Trip density" = 2, "Accessibility" = 3), selected = 1)
+    }
+  })
+  
   #This object updates only when the Run Model button is pressed. Its output is a dataframe with the model results
   matched_reactive = eventReactive(input$update_button, {
     cat("Calculating Utilities...\n")
-    car_utility = mcmapply(runUtilityModel, "car", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    car_utility = mapply(runUtilityModel, "car", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("car done..\n")
-    transit_utility = mcmapply(runUtilityModel, "transit", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    transit_utility = mapply(runUtilityModel, "transit", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("transit done..\n")
-    transit_rs_utility = mcmapply(runUtilityModel, "transit_rs", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    transit_rs_utility = mapply(runUtilityModel, "transit_rs", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("trs done..\n")
-    solo_rs_utility = mcmapply(runUtilityModel, "solo_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    solo_rs_utility = mapply(runUtilityModel, "solo_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("solo done..\n")
-    pooled_rs_utility = mcmapply(runUtilityModel, "pooled_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    pooled_rs_utility = mapply(runUtilityModel, "pooled_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("pooled done..\n")
-    walk_utility = mcmapply(runUtilityModel, "walk", matched$wlktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    walk_utility = mapply(runUtilityModel, "walk", matched$wlktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("walk done..\n")
-    bike_utility = mcmapply(runUtilityModel, "bike", matched$biktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    bike_utility = mapply(runUtilityModel, "bike", matched$biktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
     cat("bike done..\n")
     cat("Finished Utility Calculation\n")
     utilities = data.frame(matched, car_utility, transit_utility, transit_rs_utility, solo_rs_utility, pooled_rs_utility, walk_utility, bike_utility)
@@ -144,7 +156,6 @@ server = function(input, output) {
   
   #This object updates automatically whenever a new aggregation level/view is selected, or when the utility object is updated
   aggregated_reactive = reactive({
-    cat("Aggregating to selected level...\n")
     #Prevent this object from updating when the tool is first started
     if (input$update_button == 0) {
       return()
@@ -152,6 +163,9 @@ server = function(input, output) {
     input$update_button
     input$report_metric
     utilities = matched_reactive()
+    
+    cat("Aggregating to selected level...\n")
+    
     #Sum the probabilities for the service types that are selected
     if (1 %in% input$service_types) {
       utilities$Pservice = rowSums(data.frame(utilities$Pservice, utilities$Psolo_rs))
@@ -208,7 +222,7 @@ server = function(input, output) {
       geo$accessibility = NA
     }
     #Set the reported metric according to user input
-    if (input$report_metric == 1) {
+    if (input$report_metric == 1 || input$aggregate_level == 1) {
       geo$report = geo$Pservice
     } else if (input$report_metric == 2) {
       geo$report = geo$trip_den
@@ -261,4 +275,5 @@ server = function(input, output) {
 }
 
 shinyApp(ui = ui, server = server)
+
 
