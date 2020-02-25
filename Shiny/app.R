@@ -2,19 +2,18 @@ library(shiny)
 library(leaflet)
 library(maps)
 library(mapproj)
-library(geojsonio)
 library(stringr)
 library(htmltools)
 
-#setwd("C:/users/zae5o/desktop/stl/toyota av/shiny")
+#This folder path should be set to the same directory as the Shiny tool
+setwd("C:/...your_directory_here.../shiny")
 
 source("runUtilityModel.R")
 
 matched = readRDS("matched_den.rds")
-#matched = matched[1:30000,]
 
-pumas = geojson_read("puma_shapes.geojson", what = "sp")
-states = geojson_read("state_shapes.geojson", what = "sp")
+pumas = readRDS("pumas.rds")
+states = readRDS("states.rds")
 fips_codes = list(
   "All States WARNING VERY SLOW" = "00",
   "Alabama" = "01",
@@ -165,7 +164,6 @@ server = function(input, output, session) {
     utilities = matched_reactive()
     
     cat("Aggregating to selected level...\n")
-    
     #Sum the probabilities for the service types that are selected
     if (1 %in% input$service_types) {
       utilities$Pservice = rowSums(data.frame(utilities$Pservice, utilities$Psolo_rs))
