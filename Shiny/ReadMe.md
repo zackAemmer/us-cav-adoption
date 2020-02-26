@@ -1,7 +1,9 @@
 ########################################################
+
 This R-Shiny interactive tool applies the mode choice model to the matched PUMS/LODES dataset, as detailed in the "Magic Carpet Year 3" final report.
 
 ########################################################
+
 Files in this folder that are required to run the tool:
 
 app.R:
@@ -20,6 +22,7 @@ state_shapes.rds:
 Contains the State polygons and information for displaying in the interactive map.
 
 ########################################################
+
 R Libraries that must be installed prior to running the tool:
 
 "shiny"
@@ -32,6 +35,7 @@ R Libraries that must be installed prior to running the tool:
 These can be installed by calling install.packages("name_of_package") in the R command line
 
 ########################################################
+
 Starting the Tool:
 
 1. Open app.R in Rstudio or other Interactive Development Environment
@@ -47,6 +51,7 @@ Starting the Tool:
 4. The tool will then start and load the puma/state shapefiles
 
 ########################################################
+
 Operating the Tool:
 
 1. Choose calculation parameters as displayed the left-hand panel of the app screen
@@ -67,6 +72,7 @@ Operating the Tool:
 	-Running this multiple times will replace any previously saved data unless utils.csv is renamed inbetween saves
 
 ########################################################
+
 Notes:
 
 -Changing any view parameters will instantly update the map. This does not perform any new utility calculations; it only changes how they are displayed
@@ -78,6 +84,7 @@ Notes:
 -Changing the Service Types parameter only changes which services are shown on the map, it does not recalculate utilities for the implementation of different modes. It is assumed that all modes are implemented for all metrics
 
 ########################################################
+
 Developed By:
 
 Zack Aemmer
