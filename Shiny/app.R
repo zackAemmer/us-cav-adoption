@@ -4,11 +4,14 @@ library(maps)
 library(mapproj)
 library(stringr)
 library(htmltools)
+library(snow)
+library(parallel)
 
 #This folder path should be set to the same directory as the Shiny tool
-setwd("C:/...your_directory_here.../shiny")
+#setwd("C:/...your_directory_here.../shiny")
+setwd("C:/users/zae5o/desktop/stl/toyota av/shiny")
 
-source("runUtilityModel.R")
+source("runUtilityModelParallel.R")
 
 matched = readRDS("matched_den.rds")
 
@@ -118,23 +121,28 @@ server = function(input, output, session) {
   
   #This object updates only when the Run Model button is pressed. Its output is a dataframe with the model results
   matched_reactive = eventReactive(input$update_button, {
+    #set up the parallelization - leave one core open so that user's computer is not locked into the app
+    numCores = detectCores() - 1
+    cl = makeCluster(numCores)
+    
     cat("Calculating Utilities...\n")
-    car_utility = mapply(runUtilityModel, "car", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("car done..\n")
-    transit_utility = mapply(runUtilityModel, "transit", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("transit done..\n")
-    transit_rs_utility = mapply(runUtilityModel, "transit_rs", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("trs done..\n")
-    solo_rs_utility = mapply(runUtilityModel, "solo_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("solo done..\n")
-    pooled_rs_utility = mapply(runUtilityModel, "pooled_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("pooled done..\n")
-    walk_utility = mapply(runUtilityModel, "walk", matched$wlktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("walk done..\n")
-    bike_utility = mapply(runUtilityModel, "bike", matched$biktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
-    cat("bike done..\n")
+    #set up dataframes to be passed to each core
+    carData = data.frame("car", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    transitData = data.frame("transit", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    transitRsData = data.frame("transit_rs", matched$trstime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    soloRsData = data.frame("solo_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    poolRsData = data.frame("pooled_rs", matched$drvtime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    walkData = data.frame("walk", matched$wlktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    bikeData = data.frame("bike", matched$biktime, matched$drvDist, matched$hh_income/1000, matched$density, matched$age, matched$trsfare, input$service_price_srs, input$service_price_srs_base, input$service_price_prs, input$service_price_prs_base, matched$uber_tt_trs, matched$uber_tt_srs, matched$uber_tt_prs, matched$ridestrstime, matched$ridesDist, matched$parking_cost, input$service_wait_time, input$transit_wait_time, input$mpg, input$cost_gallon)
+    
+    #create list containing datasets for each mode, then send each element of the list and runUtilityModelParallel to a separate cluster - each mode has its utilities calculated on its own cluster
+    data = list(carData,transitData,transitRsData,soloRsData,poolRsData,walkData,bikeData)
+    results = clusterApplyLB(cl, data, runUtilityModelParallel)
+    stopCluster(cl)
+    
     cat("Finished Utility Calculation\n")
-    utilities = data.frame(matched, car_utility, transit_utility, transit_rs_utility, solo_rs_utility, pooled_rs_utility, walk_utility, bike_utility)
+    utilities = data.frame(matched, results[[1]], results[[2]], results[[3]], results[[4]], results[[5]], results[[6]], results[[7]])
+    names(utilities)[40:46] = c("car_utility","transit_utility","transit_rs_utility","solo_rs_utility","pooled_rs_utility","walk_utility","bike_utility")
     
     #This section turns the utilities from the model into probabilities of taking each mode
     cat("Calculating Mode Choice Probabilities...\n")
@@ -235,7 +243,6 @@ server = function(input, output, session) {
     if (input$update_button == 0) {
       return()
     }
-    cat("Generating Map...\n")
     if (input$report_metric == 1) {
       label_report = sprintf("%g%% Market share: %s", round(aggregated_reactive()$report*100, 1),aggregated_reactive()$NAME)
       groupname = "Market share"

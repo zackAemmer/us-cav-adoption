@@ -1,8 +1,33 @@
 #Type is Car, Transit, Transit_RS, Solo_RS, Pooled_RS, Walk, Bike
 #The travel time argument should be the time corresponding to the mode being tested
 #The travel distance argument is always the driving distance
-runUtilityModel = function (mode, travel_time, travel_distance, hh_income, work_density, age, trsfare, service_price_srs, service_price_srs_base, service_price_prs, service_price_prs_base, service_tt_trs, service_tt_srs, service_tt_prs, ridestrstime, ridesDist, parking_cost, service_wait_time, transit_wait_time, mpg, cost_gallon) {
+runUtilityModelParallel = function (df) {
   
+  #some unfortunate redundancy for the sake of making the actual equations a bit more clear
+  names(df) = c("mode", "travel_time", "travel_distance", "hh_income", "work_density", "age", "trsfare", "service_price_srs", "service_price_srs_base", "service_price_prs",
+                  "service_price_prs_base", "service_tt_trs", "service_tt_srs", "service_tt_prs", "ridestrstime", "ridesDist", "parking_cost", "service_wait_time", "transit_wait_time", "mpg", "cost_gallon")
+  mode = df$mode
+  travel_time = df$travel_time
+  travel_distance = df$travel_distance
+  hh_income = df$hh_income
+  work_density = df$work_density
+  age = df$age
+  trsfare = df$trsfare
+  service_price_srs = df$service_price_srs
+  service_price_srs_base = df$service_price_srs_base
+  service_price_prs = df$service_price_prs
+  service_price_prs_base = df$service_price_prs_base
+  service_tt_trs = df$service_tt_trs
+  service_tt_srs = df$service_tt_srs
+  service_tt_prs = df$service_tt_prs
+  ridestrstime = df$ridestrstime
+  ridesDist = df$ridesDist
+  parking_cost = df$parking_cost
+  service_wait_time = df$service_wait_time
+  transit_wait_time = df$transit_wait_time
+  mpg = df$mpg
+  cost_gallon = df$cost_gallon
+
   #Determine binary age variables
   if (age < 30) {
     is_age_18_29 = 1
