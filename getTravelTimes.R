@@ -4,6 +4,7 @@ library(httr)
 library(jsonlite)
 library(dplyr)
 
+
 #Small loop to get total population (of 16 older etc. in the study)
 pop = c()
 for (puma in list_of_pumas) {
@@ -101,49 +102,29 @@ legend("bottomright", c("Biking","Walking"), fill = c("black","red"))
 
 ####################### Below this is the process of matching PUMS to ODs ############################
 #Read in ODs that have driving/transit info from the Bing API
-ods1 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_1_40k.csv", stringsAsFactors = F)[,-1]
-ods2 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_40_80k.csv", stringsAsFactors = F)[,-1]
-ods3 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_80_120k.csv", stringsAsFactors = F)
-ods4 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_120_160k.csv", stringsAsFactors = F)[,-1]
-ods5 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_160_all.csv", stringsAsFactors = F)[,-1]
-#ods6 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_140_157k.csv", stringsAsFactors = F)
-#ods7 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata3_157_all.csv", stringsAsFactors = F)#[,-1]
-#ods8 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsample_fulldata/apifulldata2170_all.csv", stringsAsFactors = F)
+#ODs_to_match = read.csv("C:/users/zae5o/desktop/stl/toyota av/data/ODs_to_match_1.csv")
 
+ODs_to_match = readRDS("C:/users/zae5o/desktop/stl/toyota av/seattle/seattle_1_api.rds")
+names(ODs_to_match)[3:11] = c('a1e1','a2e1','a3e1','a1e2','a2e2','a3e2','a1e3','a2e3','a3e3')
+ODs_to_match$a1e1 = as.integer(ODs_to_match$a1e1)
+ODs_to_match$a2e1 = as.integer(ODs_to_match$a2e1)
+ODs_to_match$a3e1 = as.integer(ODs_to_match$a3e1)
+ODs_to_match$a1e2 = as.integer(ODs_to_match$a1e2)
+ODs_to_match$a2e2 = as.integer(ODs_to_match$a2e2)
+ODs_to_match$a3e2 = as.integer(ODs_to_match$a3e2)
+ODs_to_match$a1e3 = as.integer(ODs_to_match$a1e3)
+ODs_to_match$a2e3 = as.integer(ODs_to_match$a2e3)
+ODs_to_match$a3e3 = as.integer(ODs_to_match$a3e3)
 
-#Fix column names, remove "+" character on coordinates, and combine
-names_ods = names(ods1)
-names(ods1) = names_ods
-names(ods2) = names_ods
-names(ods3) = names_ods
-names(ods4) = names_ods
-names(ods5) = names_ods
-names(ods6) = names_ods
-names(ods7) = names_ods
-names(ods8) = names_ods
-fulldata_ods = rbind(ods1,ods2,ods3,ods4,ods5)
-write.csv(fulldata_ods, "C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/fulldata_ods_3.csv", row.names = F)
-fulldata_ods = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/fulldata_ods_3.csv", stringsAsFactors = F)
-rm(ods1,ods2,ods3,ods4,ods5,ods6,ods7,ods8,names_ods)
-
-#Load in the ODs that have been sorted to joint distribution
-odsz0 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/joint distribution data/z0_3.csv", stringsAsFactors = F)
-odsz1 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/joint distribution data/z1_3.csv", stringsAsFactors = F)
-odsz2 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/joint distribution data/z2_3.csv", stringsAsFactors = F)
-odsz3 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/joint distribution data/z3_3.csv", stringsAsFactors = F)
-odsz4 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/joint distribution data/z4_3.csv", stringsAsFactors = F)
-fulldata_odsz = rbind(odsz0,odsz1,odsz2,odsz3,odsz4)
-write.csv(fulldata_odsz, "C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/odsz_3.csv", row.names = F)
-fulldata_odsz = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/fulldata_odsz_3.csv", stringsAsFactors = F)
-rm(odsz0,odsz1,odsz2,odsz3,odsz4)
-
-#Match the Bing API call info to the joint distribution ODs
-ODs_to_match = merge(fulldata_odsz, fulldata_ods, by = c("h_geocode", "w_geocode"))
-ODs_to_match = ODs_to_match[,c(1,2,6:14,26:37)]
-names(ODs_to_match) = c(names(ODs_to_match)[1:2], 'a1e1','a2e1','a3e1','a1e2','a2e2','a3e2','a1e3','a2e3','a3e3', names(ODs_to_match)[12:13], 'puma_code', names(ODs_to_match)[15:20], 'drvDist','drvtime','trstime')
-rm(fulldata_ods,fulldata_odsz)
+ODs_to_match$drvDist = as.numeric(paste(ODs_to_match$drvDist))
+ODs_to_match$drvtime = as.numeric(paste(ODs_to_match$drvtime))
+ODs_to_match$trstime = as.numeric(paste(ODs_to_match$trstime))
+google_ods = readRDS("C:/users/zae5o/desktop/stl/toyota av/seattle/google_ods.rds")
+pums_data_selected = readRDS("C:/users/zae5o/desktop/stl/toyota av/seattle/pums_data_selected.rds")
 
 #Use the linear models (created/tested above on google API data) to predict walking/biking times for the joint distribution ODs
+rlm_dist_walk = rlm(walk_times ~ 0 + drvDist, google_ods)
+rlm_dist_bike = rlm(bike_times ~ 0 + drvDist, google_ods)
 ODs_to_match$biktime = predict(rlm_dist_bike, ODs_to_match) / 60
 ODs_to_match$wlktime = predict(rlm_dist_walk, ODs_to_match) / 60
 
@@ -153,18 +134,6 @@ ODs_to_match = ODs_to_match[ODs_to_match$drvDist != 0,]
 #Handle 404
 ODs_to_match = ODs_to_match[ODs_to_match$drvDist != 404.000000,]
 ODs_to_match[ODs_to_match$trstime == 404.000000,]$trstime = Inf
-ODs_to_match = ODs_to_match[order(ODs_to_match$puma_code),]
-mislabeled = read.csv("C:/users/Zae5o/Desktop/STL/Toyota AV/Data/mislabeled_trs_2.csv", stringsAsFactors = F)
-mislabeled$label = 1
-ODs_to_match$label = 0
-mislabeled = mislabeled[,c(6,7,27)]
-x = merge(mislabeled, ODs_to_match, by = c("h_geocode","w_geocode"), all.y = T)
-x$label.y[complete.cases(x$label.x)] = 1
-ODs_to_match[x$label.y == 1,]$trstime = Inf
-rm(mislabeled,x)
-
-#Save the ODs to match
-write.csv(ODs_to_match, "C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/ODs_to_match_3.csv", row.names = F)
 
 #Break PUMS into 9 categories for faster selection during OD matching process
 a1e1 = pums_data_selected[0<=pums_data_selected$age & pums_data_selected$age<=29 & -999999<=pums_data_selected$income & pums_data_selected$income<=15000,]
@@ -176,8 +145,6 @@ a3e2 = pums_data_selected[55<=pums_data_selected$age & pums_data_selected$age<=9
 a1e3 = pums_data_selected[0<=pums_data_selected$age & pums_data_selected$age<=29 & 39997<=pums_data_selected$income & pums_data_selected$income<=9999999,]
 a2e3 = pums_data_selected[30<=pums_data_selected$age & pums_data_selected$age<=54 & 39997<=pums_data_selected$income & pums_data_selected$income<=9999999,]
 a3e3 = pums_data_selected[55<=pums_data_selected$age & pums_data_selected$age<=999 & 39997<=pums_data_selected$income & pums_data_selected$income<=9999999,]
-
-ODs_to_match = read.csv('C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/ODs_to_match_3.csv', stringsAsFactors = F)
 
 #Function to check if x is within percentage difference of y (to be used with travel times)
 checkRange = function(x, y, rangeCR) {
@@ -193,7 +160,7 @@ checkRange = function(x, y, rangeCR) {
 checkCommutePlausible = function(mode, commute_time, drvtime, trstime, wlktime, biktime, rangeCP) {
   if (drvtime != Inf && mode == 1 && checkRange(commute_time, drvtime, rangeCP)) {
     return(TRUE)
-  } else if (trstime != Inf && mode %in% c(2:6) && checkRange(commute_time, trstime, rangeCP+.2)) {
+  } else if (trstime != Inf && mode %in% c(2:6) && checkRange(commute_time, trstime, rangeCP)) {
     return(TRUE)
   } else if (mode == 9 && checkRange(commute_time, biktime, rangeCP+.2)) {
     return(TRUE)
@@ -204,22 +171,15 @@ checkCommutePlausible = function(mode, commute_time, drvtime, trstime, wlktime, 
   }
 }
 
-plot(density(ODs_to_match$drvtime), col = "red", type = "l", main = "Commute Times", xlab = "Minutes", ylab = "Probability Density", xlim = c(0,200))
-points(density(ODs_to_match$trstime[ODs_to_match$trstime != Inf]), col = "blue", type = "l")
-points(density(ODs_to_match$wlktime), col = "green", type="l")
-legend("bottomright", c("Drive","Transit","Walk"), fill = c("red","blue","green"))
-x = pums_data_selected[pums_data_selected$mode==1,]
-y = pums_data_selected[pums_data_selected$mode %in% c(2:6),]
-z = pums_data_selected[pums_data_selected$mode==10,]
-plot(density(x$commute_time), col = "red", type = "l", main = "Commute Times", xlab = "Minutes", ylab = "Probability Density", xlim = c(0,200))
-points(density(y$commute_time), col = "blue", type = "l")
-points(density(z$commute_time), col = "green", type="l")
-legend("bottomright", c("Drive","Transit","Walk"), fill = c("red","blue","green"))
-
-#This take a few hours, should be rewritten in Python or consult with someone better at R
+#Set up structure to hold the results
 final = data.frame(matrix(ncol = 24))
-#final = data.frame('hid'=numeric(),'pid'=numeric(),'sample_geo'=numeric(),'age'=numeric(),'income'=numeric(),'mode'=numeric(),'commute_time'=numeric(),'vehicles'=numeric(),'hh_income'=numeric(),'h_geocode'=numeric(),'w_geocode'=numeric(),'puma_code'=character(),'w_lat'=numeric(),'w_lon'=numeric(),'h_lat'=numeric(),'h_lon'=numeric(),'origins'=character(),'destinations'=character(),'drvDist'=numeric(),'drvtime'=numeric(),'trstime'=numeric(),'biktime'=numeric(),'wlktime'=numeric(),'rangeCount'=numeric())
 names(final) = c('hid','pid','sample_geo','age','income','mode','commute_time','vehicles','hh_income','h_geocode','w_geocode',names(ODs_to_match)[14:25], 'rangeCount')
+
+#Set up cluster
+#numCores = detectCores() - 1
+#clust = makeCluster(numCores)
+#registerDoSNOW(clust)
+#clusterExport(cl = clust, c('a1e1','a1e2','a1e3','a2e1','a2e2','a2e3','a3e1','a3e2','a3e3','final','ODs_to_match','checkCommutePlausible','checkRange'), envir = .GlobalEnv)
 
 #Actual matching process
 for (k in seq(1,nrow(ODs_to_match))) {
@@ -250,15 +210,15 @@ for (k in seq(1,nrow(ODs_to_match))) {
       final[nrow(final)+1,] = toAdd
     }
   }
-  print(od$puma_code)
+  print(od$tract_code)
 }
+#stopCluster(clust)
 rm(od,nums,random_PUM,possible_PUMS,i,j,k,rangetop,rangeCount,toAdd)
 
 #Write the matched ODs/PUMS to file
 final = final[-1,]
-write.csv(final, "C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/matched_3.csv", row.names = F)
-
-
+saveRDS(final, "C:/users/zae5o/desktop/stl/toyota av/seattle/matched.rds")
+x = readRDS('C:/users/zae5o/desktop/stl/toyota av/seattle/matched.rds')
 
 
 rm(a1e1,a1e2,a1e3,a2e1,a2e2,a2e3,a3e1,a3e2,a3e3)

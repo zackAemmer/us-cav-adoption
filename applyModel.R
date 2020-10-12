@@ -11,10 +11,49 @@ transit_rides2 = read.csv("C:/users/zae5o/Desktop/STL/Toyota AV/Data/transit_rid
 transit_rides3 = read.csv("C:/users/zae5o/Desktop/STL/Toyota AV/Data/transit_rides_d3.csv", stringsAsFactors = F)
 transit_rides = rbind(transit_rides1,transit_rides2,transit_rides3)
 rm(transit_rides1,transit_rides2,transit_rides3)
+transit_rides = readRDS("C:/users/zae5o/desktop/stl/toyota av/seattle/shiny/transit_rides_seattle.rds")
 
 blocktransitfare = read.csv("C:/users/zae5o/Desktop/STL/Toyota AV/Data/blocktransitfare.csv", stringsAsFactors = F)
 blockzippopdensity = read.csv("C:/users/zae5o/Desktop/STL/Toyota AV/Data/blockzippopdensity.csv", stringsAsFactors = F)
 matched = matched[matched$hh_income > 0, ]
+
+
+
+#### Density, transit fare, trs+rs ####
+#Assumptions in the model
+mpg = 25
+cost_gallon = 2.79
+uber_wait = 5
+transit_wait = 5
+srs_base_cost = 6.80
+prs_base_cost = 4.80
+srs_cost_per_mile = 1.20
+prs_cost_per_mile = 0.85
+
+#Getting population density and transit fare
+blocktransitfare = blocktransitfare[,c(2,8)]
+names(blocktransitfare) = c("h_geocode", "trsfare")
+blockzippopdensity = blockzippopdensity[,c(2,3)]
+names(blockzippopdensity) = c("h_geocode", "density")
+#transit_rides = transit_rides[,c(2,3,4,5)]
+names(transit_rides) = c("h_geocode", "w_geocode", "ridestrstime", "ridesDist")
+
+matched$h_geocode = as.character(matched$h_geocode)
+blocktransitfare$h_geocode = as.character(blocktransitfare$h_geocode)
+blockzippopdensity$h_geocode = as.character(blockzippopdensity$h_geocode)
+matched$w_geocode = as.character(matched$w_geocode)
+transit_rides$h_geocode = as.character(transit_rides$h_geocode)
+transit_rides$w_geocode = as.character(transit_rides$w_geocode)
+matched = merge(matched, blocktransitfare, all.x = TRUE, by = "h_geocode")
+matched = merge(matched, blockzippopdensity, all.x = TRUE, by = "h_geocode")
+matched = merge(matched, transit_rides, all.x = TRUE, by = c("h_geocode", "w_geocode"))
+
+#Deal with new 404s
+matched[matched$trstime == Inf,]$ridestrstime = Inf
+matched[matched$ridestrstime == 404.000000,]$ridestrstime = Inf
+matched[matched$ridestrstime == Inf,]$ridesDist = Inf
+
+
 
 #### Uber Stuff ####
 uber = read.csv("C:/users/zae5o/Desktop/STL/Toyota AV/Data/uber_api.csv", stringsAsFactors = F)
@@ -84,37 +123,9 @@ matched$uber_tt_srs = predict(rlm_dist_srsTime, data.frame(car_d = matched$drvDi
 matched$uber_tt_prs = predict(rlm_dist_prsTime, data.frame(car_d = matched$drvDist))
 rm(uber,full_uber,model,rlm_dist_prsPrice,rlm_dist_prsTime,rlm_dist_srsPrice,rlm_dist_srsTime,rlm_log_dist_prsTime,rlm_log_dist_srsTime)
 rm(toPlotP,toPlotS,x,uber_cost_prs,uber_cost_srs,uber_cost_trs,uber_inv,uber_log,uber_log_tt_prs,uber_log_tt_srs,uber_tt_prs,uber_tt_srs,uber_tt_trs)
-saveRDS(matched,"C:/users/zae5o/desktop/stl/toyota av/data/matched_all_premodel.rds")
+saveRDS(matched,"C:/users/zae5o/desktop/stl/toyota av/seattle/shiny/matched_all_premodel.rds")
 
-#### Density, transit fare, trs+rs ####
-#Assumptions in the model
-mpg = 25
-cost_gallon = 2.79
-uber_wait = 5
-transit_wait = 5
-srs_base_cost = 6.80
-prs_base_cost = 4.80
-srs_cost_per_mile = 1.20
-prs_cost_per_mile = 0.85
 
-#Getting population density and transit fare
-blocktransitfare = blocktransitfare[,c(2,8)]
-names(blocktransitfare) = c("h_geocode", "trsfare")
-blockzippopdensity = blockzippopdensity[,c(2,3)]
-names(blockzippopdensity) = c("h_geocode", "density")
-transit_rides = transit_rides[,c(2,3,4,5)]
-names(transit_rides) = c("h_geocode", "w_geocode", "ridestrstime", "ridesDist")
-
-matched$h_geocode = as.character(matched$h_geocode)
-blocktransitfare$h_geocode = as.character(blocktransitfare$h_geocode)
-matched = merge(matched, blocktransitfare, by = "h_geocode")
-matched = merge(matched, blockzippopdensity, by = "h_geocode")
-matched = merge(matched, transit_rides, by = c("h_geocode", "w_geocode"))
-
-#Deal with new 404s
-matched[matched$trstime == Inf,]$ridestrstime = Inf
-matched[matched$ridestrstime == 404.000000,]$ridestrstime = Inf
-matched[matched$ridestrstime == Inf,]$ridesDist = Inf
 
 #### Parking costs ####
 #Parking costs data and models
@@ -136,6 +147,24 @@ matched = data.frame(matched, uber_tt_trs, uber_tt_srs, uber_tt_prs)
 write.csv(matched, "C:/Users/zae5o/desktop/stl/toyota av/data/matched_all_premodel.csv", row.names = FALSE)
 matched = read.csv("C:/Users/zae5o/desktop/stl/toyota av/data/matched_all_premodel.csv", stringsAsFactors = FALSE)
 saveRDS(matched, "C:/Users/zae5o/desktop/stl/toyota av/data/matched_all_premodel.rds")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### Accessibility Analysis ####
 accessibility = read.csv("C:/Users/zae5o/desktop/stl/toyota av/data/acc_ms_all.csv", stringsAsFactors = FALSE)
@@ -211,8 +240,6 @@ ggplot(data, aes(labels, value, fill=variable)) +
   labs(x="Pop. Density Level Quartiles Log(people/sqmi)", y="Avg Accessibility", title="Logsum Accessibility by Density") +
   theme(legend.position="right", plot.title=element_text(hjust=0.5), plot.subtitle=element_text(hjust=0.5)) +
   scale_fill_brewer(palette="YlOrRd", name="Scenarios", labels=c("Base","50% Price Decrease","75% Price Decrease","2 Minute Wait","8 Minute Wait"))
-
-
 
 
 

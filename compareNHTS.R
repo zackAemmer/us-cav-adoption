@@ -2,16 +2,8 @@ library(spatstat)
 library(plotrix)
 
 #Read in Data from NHTS and the matched PUMS
-#matched1 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/matched_1.csv", stringsAsFactors = F)
-#matched2 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/matched_2.csv", stringsAsFactors = F)
-#matched3 = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/matched_3.csv", stringsAsFactors = F)
-#matched = rbind(matched1,matched2,matched3)
-
-#matched = matched[-1,]
-#hhpub = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/NHTS/hhpub.csv", stringsAsFactors = F)
+matched = readRDS('C:/users/zae5o/desktop/stl/toyota av/seattle/matched.rds')
 perpub = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/NHTS/perpub.csv", stringsAsFactors = F)
-#trippub = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/NHTS/trippub.csv", stringsAsFactors = F)
-#vehpub = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/NHTS/vehpub.csv", stringsAsFactors = F)
 
 #Get full persons dataset with only travel time and mode
 nhts = data.frame(perpub$HOUSEID, perpub$PERSONID, perpub$R_AGE, perpub$TIMETOWK, perpub$WRKTRANS, perpub$WRK_HOME, perpub$WTPERFIN, perpub$HHFAMINC, perpub$HHVEHCNT)
@@ -23,23 +15,22 @@ nhts = nhts[nhts$TIMETOWK>0,]
 nhts = nhts[nhts$WRK_HOME != 1,]
 nhts = nhts[!(nhts$WRKTRANS %in% c(-1,-7,-8,-9,7,8,9,10,17,18,19,97)),]
 
+#Test lower sample of matched individuals
+#matched = matched_all[sample(nrow(matched_all), 10, replace = FALSE),]
 
-
-
+##
 #Mode shares
 #1:car; 2,3,4,5,6:transit; 9:bike; 10:walk; 7,8,12:other; 11:workathome. other is not used, workathome is removed from PUMS dataset, other modes are removed in matching process
 matched[matched$mode %in% c(1),]$mode = "car"
 matched[matched$mode %in% c(2,3,4,5,6),]$mode = "transit"
 matched[matched$mode %in% c(10),]$mode = "walk"
 matched[matched$mode %in% c(9),]$mode = "bike"
-#matched[matched$mode %in% c(7,8,12),]$mode = "other"
 
 #Mode share NHTS labeling
 nhts[nhts$WRKTRANS %in% c(3,4,5,6),]$WRKTRANS = "car"
 nhts[nhts$WRKTRANS %in% c(10,11,12,13,14,15,16,20),]$WRKTRANS = "transit"
 nhts[nhts$WRKTRANS %in% c(1),]$WRKTRANS = "walk"
 nhts[nhts$WRKTRANS %in% c(2),]$WRKTRANS = "bike"
-#nhts[nhts$WRKTRANS %in% c(7,8,9,17,18,19,97),]$WRKTRANS = "other"
 
 #NHTS weighted modeshare calculations
 carwtsum = sum(nhts[nhts$WRKTRANS == "car",]$WTPERFIN)
@@ -57,18 +48,7 @@ walksum = nrow(matched[matched$mode == "walk",])
 nhts_sums = c(carwtsum,transitwtsum,bikewtsum,walkwtsum)
 pums_sums = c(carsum, transitsum, bikesum, walksum)
 
-#Plot modeshare barplots
-mode_labels = c("car","transit","bike","walk")
-par(mfrow=c(1,2))
-barplot(nhts_sums/sum(nhts_sums), names.arg = mode_labels, ylim = c(0,1), main = "NHTS Modeshare")
-barplot(pums_sums/sum(pums_sums), names.arg = mode_labels, ylim = c(0,1), main = "Matched PUMS Modeshare")
-
-rm(nhts_sums,pums_sums,mode_labels)
-rm(carwtsum,transitwtsum,bikewtsum,walkwtsum,carsum,transitsum,bikesum,walksum)
-
-
-
-
+##
 #Vehicle availability
 zerowtsum = sum(nhts[nhts$HHVEHCNT == 0,]$WTPERFIN)
 onewtsum = sum(nhts[nhts$HHVEHCNT == 1,]$WTPERFIN)
@@ -87,20 +67,15 @@ pums_veh_sums = c(zerosum, onesum, twosum, threeplussum)
 
 #Plot vehicle availability barplots
 veh_labels = c("0","1","2","3+")
-par(mfrow=c(1,2))
-barplot(nhts_veh_sums/sum(nhts_veh_sums), names.arg = veh_labels, ylim = c(0,1), main = "NHTS", xlab = "Vehicles per HH")
-barplot(pums_veh_sums/sum(pums_veh_sums), names.arg = veh_labels, ylim = c(0,1), main = "Matched PUMS", xlab = "Vehicles per HH")
+#par(mfrow=c(1,2))
+#barplot(nhts_veh_sums/sum(nhts_veh_sums), names.arg = veh_labels, ylim = c(0,1), main = "NHTS", xlab = "Vehicles per HH")
+#barplot(pums_veh_sums/sum(pums_veh_sums), names.arg = veh_labels, ylim = c(0,1), main = "Matched PUMS", xlab = "Vehicles per HH")
 
-rm(nhts_veh_sums,pums_veh_sums,veh_labels)
-rm(zerowtsum,onewtsum,twowtsum,threepluswtsum,zerosum,onesum,twosum,threeplussum)
-
-
-
-
-
-#Load the original PUMS dataset to compare mode shares
-pums_data_selected = read.csv("C:/Users/Zae5o/Desktop/STL/Toyota AV/Data/pums_data_selected.csv", stringsAsFactors = F)
+##
+#Load the original PUMS dataset to compare mode shares, remove PUMS not in Seattle
+pums_data_selected = readRDS("C:/Users/Zae5o/Desktop/STL/Toyota AV/Seattle/pums_data_selected.rds")
 pums_data_selected = pums_data_selected[pums_data_selected$mode %in% c(1:6,9,10),]
+pums_data_selected = pums_data_selected[pums_data_selected$sample_geo %in% c(5311601:5311605),]
 
 #Cleaned PUMS mode share calculations
 pums_car_sum = nrow(pums_data_selected[pums_data_selected$mode == 1,])
@@ -111,12 +86,18 @@ pums_total = sum(pums_car_sum,pums_bike_sum,pums_transit_sum,pums_walk_sum)
 pums_data_sums = c(pums_car_sum, pums_transit_sum, pums_bike_sum, pums_walk_sum)
 mode_labels = c("car","transit","bike","walk")
 par(mfrow=c(1,3))
-barplot(nhts_sums/sum(nhts_sums), names.arg = mode_labels, ylim = c(0,1), main = "NHTS Modeshare")
+#png("C:/users/zae5o/desktop/modeshare.png", width = 480, height = 480, units = "px")
+#barplot(nhts_sums/sum(nhts_sums), names.arg = mode_labels, ylim = c(0,1), main = "NHTS Modeshare")
+barplot(c(0.64,0.22,0.04,0.10), names.arg = mode_labels, ylim = c(0,1), main = "Seattle ACS Modeshare")
 barplot(pums_data_sums/sum(pums_data_sums), names.arg = mode_labels, ylim = c(0,1), main = "Pre-Matching PUMS Modeshare")
 barplot(pums_sums/sum(pums_sums), names.arg = mode_labels, ylim = c(0,1), main = "Post-Matching PUMS Modeshare")
+#cat(dev.off())
 
 rm(pums_car_sum,pums_transit_sum,pums_bike_sum,pums_walk_sum,pums_total,pums_data_sums)
-
+rm(nhts_veh_sums,pums_veh_sums,veh_labels)
+rm(zerowtsum,onewtsum,twowtsum,threepluswtsum,zerosum,onesum,twosum,threeplussum)
+rm(nhts_sums,pums_sums,mode_labels)
+rm(carwtsum,transitwtsum,bikewtsum,walkwtsum,carsum,transitsum,bikesum,walksum)
 
 
 
